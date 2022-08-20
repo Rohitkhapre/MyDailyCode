@@ -1,0 +1,37 @@
+my first job:
+    script:
+        - echo "welcome to LW"
+        - date
+        - echo "bye"
+        - echo "new data"
+        - echo  "new mode data"
+
+
+
+web app dev job2 test:
+    script: 
+        - grep rohit hello.txt
+        - sleep 30
+        - echo " my test job"
+
+
+stages:
+    - build
+    - test
+
+web app dev job1 build:
+    stage: build
+    script:
+        - mkdir mybuild
+        - echo rohit > mybuild/hello.txt
+        - echo "other" > my.txt
+        - echo "my build job"
+    artifacts:
+        paths:
+            - mybuild/
+
+web app dev job2 test:
+    stage: test
+    script:
+        - grep rohit mybuild/hello.txt
+        - echo "my test job"
