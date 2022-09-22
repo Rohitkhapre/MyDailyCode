@@ -1,0 +1,38 @@
+stages:
+  - build_image
+  - deploy
+
+
+image_build:
+  stage: build_image
+  before_script:
+    - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
+  script:
+    - sudo apt-get install -y maven 
+    - chmod +x bin/build
+    - ./bin/build
+    - docker build -t $CI_REGISTRY_IMAGE .
+    - docker rm -f $CI_REGISTRY_IMAGE
+    - docker push $CI_REGISTRY_IMAGE
+  tags:
+    - build
+
+deployment:
+  stage: deploy
+  script:
+    - ip  address
+    - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
+    - docker images -q
+    - docker rmi -f $CI_REGISTRY_IMAGE
+    - docker pull $CI_REGISTRY_IMAGE
+    - docker tag $CI_REGISTRY_IMAGE demo-java:latest
+    - docker rm -f $(docker ps -q) || true
+    - docker run --rm -p 80:8080 -itd demo-java
+
+  tags:
+    - build
+
+   
+
+
+
