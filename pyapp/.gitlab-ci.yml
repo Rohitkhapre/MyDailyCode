@@ -1,0 +1,96 @@
+stages:
+  - test
+  - build
+  - deploy staging
+  - automated testing
+  - deploy prod
+
+variables:
+  #IMAGE_TAG: $CI_REGISTRY_IMAGE/$CI_PROJECT_NAME/mywebapp:$CI_COMMIT_SHORT_SHA
+  IMAGE_TAG: $CI_REGISTRY_IMAGE/$CI_PROJECT_NAME/mywebapp:v1
+  TEST_APP_URL: https://testapplw.herokuapp.com/
+  PROD_APP_URL: https://lwpyprodapp.herokuapp.com/
+  STAGING_APP: "testapparth"
+  HEROKU_STAGING_IMAGE_TAG: "registry.heroku.com/testapparth/web"
+  PROD_APP: "lwapp123"
+  HEROKU_PROD_IMAGE_TAG: "registry.heroku.com/lwapp123/web"
+
+
+pytest:
+    image: python:3.8.0-slim
+    stage: test
+    before_script:
+        - pip  install pytest-html
+        - pip install -r requirements.txt
+    script:
+        - pytest --html=pytest_reports/myreport.html
+    artifacts:
+        when: always
+        paths:
+            - pytest_reports/
+    only:
+      - devb
+
+build:
+    stage: build
+    image: docker:latest
+    services:
+      - docker:dind
+    before_script:
+      - docker login $CI_REGISTRY  -u $CI_REGISTRY_USER  -p $CI_REGISTRY_PASSWORD
+    script:
+      - docker build -t $IMAGE_TAG  .
+      - docker images
+      - docker push $IMAGE_TAG
+    only:
+      - devb
+
+
+
+deploy_stage:
+    stage: deploy staging
+    image: docker:latest
+    services:
+      - docker:dind
+    environment:
+      name: stage_env
+      url: $TEST_APP_URL
+    before_script:
+      - docker login $CI_REGISTRY  -u $CI_REGISTRY_USER  -p $CI_REGISTRY_PASSWORD
+      - docker login -u _  -p  $HEROKU_STAGING_API_KEY  registry.heroku.com
+    script:
+      - docker pull $IMAGE_TAG
+      - docker tag  $IMAGE_TAG $HEROKU_STAGING_IMAGE_TAG
+      - docker push $HEROKU_STAGING_IMAGE_TAG
+      - docker run --rm -e HEROKU_API_KEY=$HEROKU_STAGING_API_KEY  wingrunr21/alpine-heroku-cli  container:release web --app $STAGING_APP
+    only:
+      - devb
+
+
+test_stage:
+  image: alpine
+  stage: automated testing
+  before_script:
+    - apk --no-cache add curl
+  script:
+    - curl https://$STAGING_APP.herokuapp.com/  |  grep  -i "Employee"
+  only:
+    - devb 
+
+prod_deploy:
+    stage: deploy prod
+    image: docker:latest
+    services:
+      - docker:dind
+    before_script:
+      - docker login $CI_REGISTRY  -u $CI_REGISTRY_USER  -p $CI_REGISTRY_PASSWORD
+      - docker login -u _  -p  $HEROKU_STAGING_API_KEY  registry.heroku.com
+    script:
+      - docker pull $IMAGE_TAG
+      - docker tag  $IMAGE_TAG $HEROKU_PROD_IMAGE_TAG
+      - docker push $HEROKU_PROD_IMAGE_TAG
+      - docker run --rm -e HEROKU_API_KEY=$HEROKU_STAGING_API_KEY  wingrunr21/alpine-heroku-cli  container:release web --app $PROD_APP
+      - echo "your server prod at  $PROD_APP_URL"
+    only:
+      - main
+

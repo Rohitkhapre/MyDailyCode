@@ -1,0 +1,41 @@
+stages:
+    - build
+    - deploy
+
+
+build job:
+    stage: build
+    script: 
+        - echo "i am build..."
+        - hostname
+        - echo $CI_COMMIT_SHA
+        - echo $CI_REGISTRY_USER
+        - echo $CI_REGISTRY
+        - echo $CI_REGISTRY_PASSWORD
+        - echo $CI_PIPELINE_ID
+        #- cat app.py
+        #- cat Dockerfile
+        
+        - whoami
+    #    - docker build -t mypyapp:$CI_PROJECT_ID .
+        - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
+        - docker build -t registry.gitlab.com/rohitpawar27/thirdproject/mypyapp:CI_PIPELINE_ID .
+        - docker push registry.gitlab.com/rohitpawar27/thirdproject/mypyapp:CI_PIPELINE_ID
+
+    tags:
+        - mybuild
+
+production job:
+    stage: deploy
+    script:
+        - echo " i am production"
+        - hostname
+        - echo $CI_JOB_ID
+        - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
+        - docker pull registry.gitlab.com/rohitpawar27/thirdproject/mypyapp:CI_PIPELINE_ID
+        - docker rm -f app1 || true
+        - docker run -dit --name app1 -p 80:8080 registry.gitlab.com/rohitpawar27/thirdproject/mypyapp:CI_PIPELINE_ID
+    tags:    
+        - production
+    
+
